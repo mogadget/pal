@@ -46,12 +46,22 @@ defmodule Pal.Service do
     |> Pal.Repo.update()
   end
 
-  def create_visit(account, attrs) do
+  def create_visit(%Account{} = account, attrs) do
     if account.role == "member" do
-      Visit.changeset(%Visit{}, Map.put(attrs, "account_id", account.id))
-      |> Repo.insert()
+      if account.minutes >= attrs["minutes"] do
+        Visit.changeset(%Visit{}, Map.put(attrs, "account_id", account.id))
+        |> Repo.insert()
+      else
+        {:error, "Not enough credit minutes to cover the visit"}
+      end
     else
       {:error, "Cannot request visit for a non-member!"}
+    end
+  end
+
+  def create_visit(account_id, attrs) do
+    if account = Repo.get(Account, account_id) do
+      create_visit(account, attrs)
     end
   end
 
