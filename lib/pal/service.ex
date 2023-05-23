@@ -116,12 +116,12 @@ defmodule Pal.Service do
   end
 
   defp update_minutes(:debit, account, minutes) do
-    new_minutes = account.minutes - minutes
+    new_minutes = Helpers.subtract_minutes(account.minutes, minutes)
     update_user_account(account, %{"minutes" => new_minutes})
   end
 
   defp update_minutes(:credit, account, minutes) do
-    new_minutes = account.minutes + minutes
+    new_minutes = Helpers.add_minutes(account.minutes, minutes)
     update_user_account(account, %{"minutes" => new_minutes})
   end
 
