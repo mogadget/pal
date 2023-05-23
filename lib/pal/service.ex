@@ -6,6 +6,7 @@ defmodule Pal.Service do
   alias Pal.Account
   alias Pal.Visit
   alias Pal.Transaction
+  alias Pal.Helpers
 
   def create_user(attrs) do
     changeset = User.changeset(%User{}, attrs)
@@ -76,7 +77,8 @@ defmodule Pal.Service do
       debit_changeset = get_account_changeset(visit.account_id, :debit, visit.minutes)
 
       ## pal account
-      credit_changeset = get_account_changeset(pal_account_id, :credit, visit.minutes)
+      fee_in_minutes = deduct_overhead_fee(visit.minutes)
+      credit_changeset = get_account_changeset(pal_account_id, :credit, fee_in_minutes)
 
       ## transaction
       transaction = %Transaction{
@@ -105,12 +107,12 @@ defmodule Pal.Service do
 
   defp get_account_changeset(id, :debit, minutes) do
     account = Repo.get(Account, id)
-    Account.changeset(account, %{"minutes" => account.minutes - minutes})
+    Account.changeset(account, %{"minutes" => Helpers.subtract_minutes(account.minutes, minutes)})
   end
 
   defp get_account_changeset(id, :credit, minutes) do
     account = Repo.get(Account, id)
-    Account.changeset(account, %{"minutes" => account.minutes + minutes})
+    Account.changeset(account, %{"minutes" => Helpers.add_minutes(account.minutes, minutes)})
   end
 
   defp update_minutes(:debit, account, minutes) do
@@ -122,4 +124,20 @@ defmodule Pal.Service do
     new_minutes = account.minutes + minutes
     update_user_account(account, %{"minutes" => new_minutes})
   end
+
+  defp deduct_overhead_fee(minutes, pctg \\ 0.15) do
+    overhead = minutes * pctg
+
+    Float.ceil(minutes - overhead, 2)
+    |> Decimal.from_float()
+    |> Decimal.new()
+  end
+
+  defp mins_sub(min1, min2) do
+    Decimal.sub(min1, min2)
+    |> Decimal.to_float()
+    |> Float.ceil(2)
+  end
+
+  defp mins_add(min1, min2), do: Decimal.add(min1, min2)
 end
